@@ -3,9 +3,7 @@ package carGit
 import (
 	"fmt"
 	"os"
-
 	"os/exec"
-
 	"strings"
 
 	"github.com/mgutz/ansi"
