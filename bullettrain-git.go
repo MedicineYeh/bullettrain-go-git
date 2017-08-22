@@ -9,9 +9,11 @@ import (
 	"github.com/mgutz/ansi"
 )
 
-const carPaint = "black:white"
-const gitSymbolPaint = "red:white"
-const gitSymbolIcon = ""
+const (
+	carPaint       = "black:white"
+	gitSymbolPaint = "red:white"
+	gitSymbolIcon  = ""
+)
 
 // Car for Git
 type Car struct {
