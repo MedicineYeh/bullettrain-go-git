@@ -104,7 +104,7 @@ func currentHeadName(pwd string) string {
 
 	ref = []byte(strings.Replace(string(ref), "refs/heads/", "", 1))
 
-	if string(ref) == "" {
+	if len(ref) == 0 {
 		return ""
 	}
 
