@@ -13,6 +13,10 @@ const (
 	carPaint       = "black:white"
 	gitSymbolPaint = "red:white"
 	gitSymbolIcon  = ""
+	gitDirtyPaint  = "red:white"
+	gitDirtyIcon   = "✘"
+	gitCleanPaint  = "green:white"
+	gitCleanIcon   = "✔"
 )
 
 // Car for Git
@@ -36,6 +40,36 @@ func paintedSymbol() string {
 	return ansi.Color(symbolIcon, symbolPaint)
 }
 
+func paintStatus(pwd string) string {
+	var dirtyIcon string
+	if dirtyIcon = os.Getenv("BULLETTRAIN_CAR_GIT_DIRTY_ICON"); dirtyIcon == "" {
+		dirtyIcon = gitDirtyIcon
+	}
+
+	var dirtyPaint string
+	if dirtyPaint = os.Getenv("BULLETTRAIN_CAR_GIT_DIRTY_PAINT"); dirtyPaint == "" {
+		dirtyPaint = gitDirtyPaint
+	}
+
+	var cleanIcon string
+	if cleanIcon = os.Getenv("BULLETTRAIN_CAR_GIT_CLEAN_ICON"); cleanIcon == "" {
+		cleanIcon = gitCleanIcon
+	}
+
+	var cleanPaint string
+	if cleanPaint = os.Getenv("BULLETTRAIN_CAR_GIT_CLEAN_PAINT"); cleanPaint == "" {
+		cleanPaint = gitCleanPaint
+	}
+
+	cmd := exec.Command("git", "-C", pwd, "status", "--porcelain")
+	out, _ := cmd.Output()
+	if len(out) > 0 {
+		return ansi.Color(dirtyIcon, dirtyPaint)
+	} else {
+		return ansi.Color(cleanIcon, cleanPaint)
+	}
+}
+
 // GetPaint returns the calculated end paint string for the car.
 func (c *Car) GetPaint() string {
 	if c.paint = os.Getenv("BULLETTRAIN_CAR_GIT_PAINT"); c.paint == "" {
@@ -56,15 +90,25 @@ func (c *Car) CanShow() bool {
 	return false
 }
 
-func currentBranchName(pwd string) string {
-	cmd := exec.Command(
-		"git", "-C", pwd, "rev-parse", "--abbrev-ref", "HEAD")
-	cmdOut, _ := cmd.Output()
-	if string(cmdOut) == "" {
+func currentHeadName(pwd string) string {
+	cmd := exec.Command("git", "-C", pwd, "symbolic-ref", "HEAD")
+	ref, err := cmd.Output()
+	if err != nil {
+		cmd := exec.Command("git", "-C", pwd, "describe", "--tags", "--exact-match", "HEAD")
+		ref, err = cmd.Output()
+		if err != nil {
+			cmd := exec.Command("git", "-C", pwd, "rev-parse", "--short", "HEAD")
+			ref, _ = cmd.Output()
+		}
+	}
+
+	ref = []byte(strings.Replace(string(ref), "refs/heads/", "", 1))
+
+	if len(ref) == 0 {
 		return ""
 	}
 
-	return strings.TrimRight(string(cmdOut), "\n")
+	return strings.TrimRight(string(ref), "\n")
 }
 
 // Render builds and passes the end product of a completely composed car onto
@@ -73,9 +117,10 @@ func (c *Car) Render(out chan<- string) {
 	defer close(out) // Always close the channel!
 	carPaint := ansi.ColorFunc(c.GetPaint())
 
-	out <- fmt.Sprintf("%s%s",
+	out <- fmt.Sprintf("%s%s%s",
 		paintedSymbol(),
-		carPaint(currentBranchName(c.Pwd)))
+		carPaint(currentHeadName(c.Pwd)),
+		paintStatus(c.Pwd))
 }
 
 // GetSeparatorPaint overrides the Fg/Bg colours of the right hand side
