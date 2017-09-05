@@ -12,7 +12,7 @@ import (
 const (
 	carPaint       = "black:white"
 	gitSymbolPaint = "red:white"
-	gitSymbolIcon  = ""
+	gitSymbolIcon  = " "
 	gitDirtyPaint  = "red:white"
 	gitDirtyIcon   = "✘"
 	gitCleanPaint  = "green:white"
