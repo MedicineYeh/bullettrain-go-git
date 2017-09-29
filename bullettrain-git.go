@@ -1,10 +1,12 @@
 package carGit
 
 import (
-	"fmt"
+	"bytes"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
+	"text/template"
 
 	"github.com/bullettrain-sh/bullettrain-go-core/pkg/ansi"
 )
@@ -12,11 +14,12 @@ import (
 const (
 	carPaint       = "black:white"
 	gitSymbolPaint = "red:white"
-	gitSymbolIcon  = " "
+	gitSymbolIcon  = ""
 	gitDirtyPaint  = "red:white"
 	gitDirtyIcon   = "✘"
 	gitCleanPaint  = "green:white"
 	gitCleanIcon   = "✔"
+	carTemplate    = `{{.Icon | printf "%s " | cs}}{{.Name | c}}{{.StatusIcon | csi}}`
 )
 
 // Car for Git
@@ -26,21 +29,7 @@ type Car struct {
 	Pwd string
 }
 
-func paintedSymbol() string {
-	var symbolIcon string
-	if symbolIcon = os.Getenv("BULLETTRAIN_CAR_GIT_ICON"); symbolIcon == "" {
-		symbolIcon = gitSymbolIcon
-	}
-
-	var symbolPaint string
-	if symbolPaint = os.Getenv("BULLETTRAIN_CAR_GIT_ICON_PAINT"); symbolPaint == "" {
-		symbolPaint = gitSymbolPaint
-	}
-
-	return ansi.Color(symbolIcon, symbolPaint)
-}
-
-func paintStatus(pwd string) string {
+func statusIconInfo(pwd string) (symbol, colour string) {
 	var dirtyIcon string
 	if dirtyIcon = os.Getenv("BULLETTRAIN_CAR_GIT_DIRTY_ICON"); dirtyIcon == "" {
 		dirtyIcon = gitDirtyIcon
@@ -62,11 +51,15 @@ func paintStatus(pwd string) string {
 	}
 
 	cmd := exec.Command("git", "-C", pwd, "status", "--porcelain")
-	out, _ := cmd.Output()
+	out, err := cmd.Output()
+	if err != nil {
+		return "", ""
+	}
+
 	if len(out) > 0 {
-		return ansi.Color(dirtyIcon, dirtyPaint)
+		return dirtyIcon, dirtyPaint
 	} else {
-		return ansi.Color(cleanIcon, cleanPaint)
+		return cleanIcon, cleanPaint
 	}
 }
 
@@ -96,10 +89,13 @@ func currentHeadName(pwd string) string {
 	if err != nil {
 		cmd := exec.Command("git", "-C", pwd, "describe", "--tags", "--exact-match", "HEAD")
 		ref, err = cmd.Output()
-		if err != nil {
-			cmd := exec.Command("git", "-C", pwd, "rev-parse", "--short", "HEAD")
-			ref, _ = cmd.Output()
-		}
+	}
+	if err != nil {
+		cmd := exec.Command("git", "-C", pwd, "rev-parse", "--short", "HEAD")
+		ref, err = cmd.Output()
+	}
+	if err != nil {
+		return strings.TrimRight(err.Error(), "\n")
 	}
 
 	ref = []byte(strings.Replace(string(ref), "refs/heads/", "", 1))
@@ -115,12 +111,46 @@ func currentHeadName(pwd string) string {
 // the channel.
 func (c *Car) Render(out chan<- string) {
 	defer close(out) // Always close the channel!
-	carPaint := ansi.ColorFunc(c.GetPaint())
 
-	out <- fmt.Sprintf("%s%s%s",
-		paintedSymbol(),
-		carPaint(currentHeadName(c.Pwd)),
-		paintStatus(c.Pwd))
+	var symbolIcon string
+	if symbolIcon = os.Getenv("BULLETTRAIN_CAR_GIT_ICON"); symbolIcon == "" {
+		symbolIcon = gitSymbolIcon
+	}
+
+	var symbolPaint string
+	if symbolPaint = os.Getenv("BULLETTRAIN_CAR_GIT_ICON_PAINT"); symbolPaint == "" {
+		symbolPaint = gitSymbolPaint
+	}
+
+	statusIcon, statusIconColour := statusIconInfo(c.Pwd)
+
+	var s string
+	if s = os.Getenv("BULLETTRAIN_CAR_GIT_TEMPLATE"); s == "" {
+		s = carTemplate
+	}
+
+	funcMap := template.FuncMap{
+		// Pipeline functions for colouring.
+		"c":   func(t string) string { return ansi.Color(t, c.GetPaint()) },
+		"cs":  func(t string) string { return ansi.Color(t, symbolPaint) },
+		"csi": func(t string) string { return ansi.Color(t, statusIconColour) },
+	}
+
+	tpl := template.Must(template.New("user").Funcs(funcMap).Parse(s))
+	data := struct {
+		Icon       string
+		Name       string
+		StatusIcon string
+	}{Icon: symbolIcon,
+		Name: currentHeadName(c.Pwd),
+		StatusIcon: statusIcon}
+	fromTpl := new(bytes.Buffer)
+	err := tpl.Execute(fromTpl, data)
+	if err != nil {
+		log.Fatalf("Can't generate the user template: %s", err.Error())
+	}
+
+	out <- fromTpl.String()
 }
 
 // GetSeparatorPaint overrides the Fg/Bg colours of the right hand side
