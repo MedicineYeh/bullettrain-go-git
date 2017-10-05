@@ -19,7 +19,7 @@ const (
 	gitDirtyIcon   = "✘"
 	gitCleanPaint  = "green:white"
 	gitCleanIcon   = "✔"
-	carTemplate    = `{{.Icon | printf "%s " | cs}}{{.Name | c}}{{.StatusIcon | csi}}`
+	carTemplate    = `{{.Icon | printf "%s " | cs}}{{.Name | c}}{{.StatusIcon | printf " %s" | csi}}`
 )
 
 // Car for Git
