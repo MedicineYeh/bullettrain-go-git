@@ -8,7 +8,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/bullettrain-sh/bullettrain-go-core/pkg/ansi"
+	"github.com/bullettrain-sh/bullettrain-go-core/src/ansi"
 )
 
 const (
@@ -142,7 +142,7 @@ func (c *Car) Render(out chan<- string) {
 		Name       string
 		StatusIcon string
 	}{Icon: symbolIcon,
-		Name: currentHeadName(c.Pwd),
+		Name:       currentHeadName(c.Pwd),
 		StatusIcon: statusIcon}
 	fromTpl := new(bytes.Buffer)
 	err := tpl.Execute(fromTpl, data)
