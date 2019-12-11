@@ -50,7 +50,7 @@ func statusIconInfo(pwd string) (symbol, colour string) {
 		cleanPaint = gitCleanPaint
 	}
 
-	cmd := exec.Command("git", "-C", pwd, "status", "--porcelain")
+	cmd := exec.Command("git", "status", "--porcelain")
 	out, err := cmd.Output()
 	if err != nil {
 		return "", ""
@@ -74,7 +74,7 @@ func (c *Car) GetPaint() string {
 
 // CanShow decides if this car needs to be displayed.
 func (c *Car) CanShow() bool {
-	cmd := exec.Command("git", "-C", c.Pwd, "rev-parse", "--git-dir")
+	cmd := exec.Command("git", "rev-parse", "--git-dir")
 	cmdOut, _ := cmd.Output()
 	if string(cmdOut) != "" {
 		return true
@@ -84,14 +84,14 @@ func (c *Car) CanShow() bool {
 }
 
 func currentHeadName(pwd string) string {
-	cmd := exec.Command("git", "-C", pwd, "symbolic-ref", "HEAD")
+	cmd := exec.Command("git", "symbolic-ref", "HEAD")
 	ref, err := cmd.Output()
 	if err != nil {
-		cmd := exec.Command("git", "-C", pwd, "describe", "--tags", "--exact-match", "HEAD")
+		cmd := exec.Command("git", "describe", "--tags", "--exact-match", "HEAD")
 		ref, err = cmd.Output()
 	}
 	if err != nil {
-		cmd := exec.Command("git", "-C", pwd, "rev-parse", "--short", "HEAD")
+		cmd := exec.Command("git", "rev-parse", "--short", "HEAD")
 		ref, err = cmd.Output()
 	}
 	if err != nil {
